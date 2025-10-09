@@ -777,35 +777,60 @@ def elza_isyz_csv(xmlFile, file_name, output_folder):
 
 def file_process():
     export_folder = exe_folder()
-    print(export_folder)
+    # print(export_folder)
     import_folder = str(export_folder).strip('/export')
-    print(import_folder)
+    # print(import_folder)
+    print('Národní Archiv\nisyz_soudy_appka spuštěna, vyhledávám XML data pro zpracování\n')
+    rejstrik_files = 0
+    isyz_files = 0
+    xml_list = list()
     for dirpath, dirnames, filenames in os.walk(import_folder):
-        for file_name in [f for f in filenames if f. endswith(".xml")]:
-            # print(os.path.join(dirpath, file_name))
-
-            #Search one file
+        for file_name in [f for f in filenames if f. endswith(".xml") or f. endswith(".XML")]:
             file_content = open(os.path.join(dirpath, file_name), encoding="utf8").read()
             file_path = os.path.join(dirpath, file_name)
             for line in file_content.splitlines():
 
                 #Check for isyz
-                if (line.find("isyz") or line.find("ZASTUPITELSTVÍ")) != -1 :
-                    # print("isyz")
-
+                if (line.find("isyz") or line.find("ZASTUPITELSTVÍ") or line.find("zastupitelství")
+                            or line.find("Zastupitelství")) != -1 :
+                    print('Rozpoznány XML data z ISYZ: ' + file_name)
+                    xml_list.append(file_name)
+                    isyz_files += 1
+                    print('Zpracovávám vstupní data pro ProArch...')
                     proarch_isyz_csv(file_path, file_name, export_folder)
+                    print('Zpracovávám vstupní data pro Elza...\n')
                     elza_isyz_csv(file_path, file_name, export_folder)
                     break
-                elif line.find("soud") != -1 :
-                    # print("rejstrik")
-
-                    #Save to the right folder
-                    print('Zpracovávám vstupní data pro ProArch...')
+                elif (line.find("soud") or line.find("SOUD") or line.find("Soud")) != -1 :
+                    print('Rozpoznány XML data z rejstříků soudů: ' + file_name)
+                    xml_list.append(file_name)
+                    rejstrik_files += 1
+                    print('Zpracovávám vstupní data rejstříku pro ProArch...')
                     proarch_rejstrik_csv(file_path, file_name, export_folder)
-                    print('Zpracovávám vstupní data pro Elza...')
+                    print('Zpracovávám vstupní rejstříku data pro Elza...\n')
                     elza_rejstrik_csv(file_path, file_name, export_folder)
-                    print('Zpracováno, ukončuji program.')
                     break
+    with open("isyz_soudy_appka_zprava.html",
+              "w",
+            newline="\n",
+            encoding="UTF-8") as report:
+        report.write("<html><body><h1>Národní archiv, isyz_soudy_appka</h1><br><p>Zpracováno:<p><br>")
+        report.close()
+    with open("isyz_soudy_appka_zprava.html",
+              "a",
+            newline="\n",
+            encoding="UTF-8") as report:
+        for i in xml_list:
+            report.write(i+'<br>')
+        report.close()
+    with open("isyz_soudy_appka_zprava.html",
+              "a",
+              newline="\n",
+              encoding="UTF-8") as report:
+        report.write('</p></body></html>')
+        report.close()
+    print('\nZpracováno celkem ' + str(rejstrik_files) + ' XML z rejstříků, ' + str(isyz_files) +
+          ' XML z ISYZu. Report o průběhu je vytvořen, ukončuji zpracování')
 
 
 if __name__ == "__main__":
