@@ -35,7 +35,8 @@ def exe_folder():
 
 def proarch_rejstrik_csv(xmlFile, file_name, output_folder):
     """Writes CSV file for ProArchiv software"""
-    with open(output_folder + "/proArch_rejstrik_" + file_name + ".csv",
+    output_file = file_name.strip('.xml')
+    with open(output_folder + "/proArch_rejstrik_" + output_file + ".csv",
              "w",
              newline="",
              encoding="UTF-8",
@@ -75,11 +76,12 @@ def proarch_rejstrik_csv(xmlFile, file_name, output_folder):
         osoby = list()
         zprac = row.find("druh_stav_veci").text
         if "ODSKRTNUTA" == str(zprac):
+            sp_zn_list = list()
             druh = row.find("druh_vec").text
             rocnik = row.find("rocnik").text
             bc_vec = row.find("bc_vec").text
-            sp_zn_roc_list = (bc_vec, rocnik)
-            sp_zn_roc = "/".join(sp_zn_roc_list)
+            sp_zn_list.append(bc_vec)
+            sp_zn_list.append(rocnik)
             predmet_rizeni = row.find("predmet_rizeni").text
             obsah.append(predmet_rizeni)
             raw_druh_vysledek = row.find("druh_vysledek").text
@@ -90,8 +92,16 @@ def proarch_rejstrik_csv(xmlFile, file_name, output_folder):
                 druh_vysledek.append('Nevyplněno')
             obsah.append('Vyřízení: ' + " ".join(druh_vysledek))
             # id_osoby_vyridil = row.find("id_osoby_vyridil").text
-            sp_zn_list = (druh, sp_zn_roc)
-            sp_zn = " ".join(sp_zn_list)
+            try:
+                senat_row = row.find("cislo_senatu").text
+                if senat_row and int(senat_row) >= 0:
+                    senat = senat_row
+                    sp_zn_list.append(senat)
+                else:
+                    pass
+            except AttributeError:
+                pass
+            sp_zn = "/".join(sp_zn_list)
             datum_doslo = row.find("datum_doslo").text
             datum_od = datum_doslo[0:4]
             datum_odskrtnuti = row.find("datum_odskrtnuti").text
@@ -159,7 +169,7 @@ def proarch_rejstrik_csv(xmlFile, file_name, output_folder):
             sp_zn_roc_list = (bc_vec, rocnik)
             sp_zn_roc = "/".join(sp_zn_roc_list)
             sp_zn_list = (druh, sp_zn_roc)
-            sp_zn = " ".join(sp_zn_list)
+            sp_zn = "/".join(sp_zn_list)
             datace_raw.append("")
             obsah = "chybný vstup pro spisovou značku"
             # print(rocnik, bc_vec, sp_zn, obsah)
@@ -188,7 +198,7 @@ def proarch_rejstrik_csv(xmlFile, file_name, output_folder):
             "osobní údaje - omezená přístupnost",
             osoby_str,
             ""]
-        with open(output_folder + "/proArch_rejstrik_" + file_name + ".csv", "a",
+        with open(output_folder + "/proArch_rejstrik_" + output_file + ".csv", "a",
                   newline="",
                   encoding="UTF-8") as csvfile:
                 writer = csv.writer(csvfile,
@@ -200,7 +210,8 @@ def proarch_rejstrik_csv(xmlFile, file_name, output_folder):
 
 def proarch_isyz_csv(xmlFile, file_name, output_folder):
     """Produces CSV from parsed XML file"""
-    with open(output_folder + "/proArch_isyz_" + file_name + ".csv",
+    output_file = file_name.strip('.xml')
+    with open(output_folder + "/proArch_isyz_" + output_file + ".csv",
              "w",
              newline="",
              encoding="UTF-8",
@@ -239,15 +250,26 @@ def proarch_isyz_csv(xmlFile, file_name, output_folder):
 
     for row in xml.findall("vec"):
         # Iterate over the XML file
-        obsah = list()
         osoby = list()
+        sp_zn_list = list()
         cislo_rejstriku = row.find("cislo_rejstrik").text
         druh = row.find("druh_vec").text
         rocnik = row.find("rocnik").text
         bc_vec = row.find("bc_vec").text
         sp_zn_roc_list = (bc_vec, rocnik)
         sp_zn_roc = "/".join(sp_zn_roc_list)
-        sp_zn_list = (cislo_rejstriku, druh, sp_zn_roc)
+        sp_zn_list.append(cislo_rejstriku)
+        sp_zn_list.append(druh)
+        sp_zn_list.append(sp_zn_roc)
+        try:
+            senat_row = row.find("cislo_senatu").text
+            if senat_row and int(senat_row) >= 0:
+                senat = senat_row
+                sp_zn_list.append(senat)
+            else:
+                pass
+        except AttributeError:
+            pass
         sp_zn = " ".join(sp_zn_list)
         datum_od_raw = row.find("datum_doslo").text
         datum_od = datum_od_raw[0:4]
@@ -356,7 +378,7 @@ def proarch_isyz_csv(xmlFile, file_name, output_folder):
                 osoby_str,
                 ""
         ]
-        with open(output_folder + "/proArch_isyz_" + file_name + ".csv",
+        with open(output_folder + "/proArch_isyz_" + output_file + ".csv",
                       "a",
                       newline="",
                       encoding="UTF-8") as csvfile:
@@ -366,8 +388,9 @@ def proarch_isyz_csv(xmlFile, file_name, output_folder):
 
 
 def elza_rejstrik_csv(xmlFile, file_name, output_folder):
+    output_file = file_name.strip('.xml')
     with open(
-            output_folder + "/elza_rejstrik_" + file_name + ".csv",
+            output_folder + "/elza_rejstrik_" + output_file + ".csv",
             "w",
             newline="",
             encoding="cp1250",
@@ -425,11 +448,14 @@ def elza_rejstrik_csv(xmlFile, file_name, output_folder):
             zprac = row.find("druh_stav_veci").text
             osoby = list()
             if "ODSKRTNUTA" == str(zprac):
+                sp_zn_list = list()
                 druh = row.find("druh_vec").text
                 rocnik = row.find("rocnik").text
                 bc_vec = row.find("bc_vec").text
-                sp_zn_roc_list = (bc_vec, rocnik)
-                sp_zn_roc = "/".join(sp_zn_roc_list)
+                sp_zn_list.append(bc_vec)
+                sp_zn_list.append(rocnik)
+                # sp_zn_roc_list = (bc_vec, rocnik)
+                # sp_zn_roc = "/".join(sp_zn_roc_list)
                 obsah = list()
                 predmet_rizeni = row.find("predmet_rizeni").text
                 obsah.append(predmet_rizeni)
@@ -441,8 +467,13 @@ def elza_rejstrik_csv(xmlFile, file_name, output_folder):
                     druh_vysledek.append('Nevyplněno')
                 obsah.append('Vyřízení: ' + " ".join(druh_vysledek))
                 # id_osoby_vyridil = row.find("id_osoby_vyridil").text
-                sp_zn_list = (druh, sp_zn_roc)
-                sp_zn = " ".join(sp_zn_list)
+                senat_row = row.find("cislo_senatu").text
+                if senat_row and int(senat_row) >= 0:
+                    senat = senat_row
+                    sp_zn_list.append(senat)
+                else:
+                    sp_zn_list = (druh, sp_zn_roc)
+                sp_zn = "/".join(sp_zn_list)
                 datum_doslo = row.find("datum_doslo").text
                 datum_od = datum_doslo[0:4]
                 datum_odskrtnuti = row.find("datum_odskrtnuti").text
@@ -545,7 +576,7 @@ def elza_rejstrik_csv(xmlFile, file_name, output_folder):
             ]
             # print(csv_line)
             with open(
-                    output_folder + "/elza_rejstrik_" + file_name + ".csv",
+                    output_folder + "/elza_rejstrik_" + output_file + ".csv",
                     "a",
                     newline="",
                     encoding="cp1250",
@@ -557,8 +588,9 @@ def elza_rejstrik_csv(xmlFile, file_name, output_folder):
 
 def elza_isyz_csv(xmlFile, file_name, output_folder):
     """Writes CSV file for Elza software"""
+    output_file = file_name.strip('.xml')
     with open(
-            output_folder + "/elza_isyz_" + file_name + ".csv",
+            output_folder + "/elza_isyz_" + output_file + ".csv",
             "w",
             newline="",
             encoding="cp1250",
@@ -624,6 +656,15 @@ def elza_isyz_csv(xmlFile, file_name, output_folder):
             sp_zn_list.append(cislo_rejstriku)
             sp_zn_list.append(druh)
             sp_zn_list.append(sp_zn_roc)
+            try:
+                senat_row = row.find("cislo_senatu").text
+                if senat_row and int(senat_row) > 0:
+                    senat = senat_row
+                    sp_zn_list.append(senat)
+                else:
+                    pass
+            except AttributeError:
+                pass
             sp_zn = " ".join(sp_zn_list)
             datum_od_raw = row.find("datum_doslo").text
             datum_od = datum_od_raw[0:4]
@@ -724,7 +765,7 @@ def elza_isyz_csv(xmlFile, file_name, output_folder):
             # print(csv_line)
 
             with open(
-                    output_folder + "/elza_isyz_" + file_name + ".csv",
+                    output_folder + "/elza_isyz_" + output_file + ".csv",
                     "a",
                     newline="",
                     encoding="cp1250",
