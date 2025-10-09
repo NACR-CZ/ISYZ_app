@@ -4,6 +4,8 @@ import csv
 import xml.etree.ElementTree as ET
 import sys
 import traceback
+from multiprocessing.reduction import duplicate
+
 
 def get_exe_folder():
     if getattr(sys, "frozen", False):
@@ -76,70 +78,81 @@ def proarch_rejstrik_csv(xmlFile, file_name, output_folder):
         osoby = list()
         zprac = row.find("druh_stav_veci").text
         if "ODSKRTNUTA" == str(zprac):
-            sp_zn_list = list()
-            druh = row.find("druh_vec").text
-            rocnik = row.find("rocnik").text
-            bc_vec = row.find("bc_vec").text
-            sp_zn_list.append(bc_vec)
-            sp_zn_list.append(rocnik)
-            predmet_rizeni = row.find("predmet_rizeni").text
-            obsah.append(predmet_rizeni)
-            raw_druh_vysledek = row.find("druh_vysledek").text
-            druh_vysledek = list()
-            if raw_druh_vysledek is not None:
-                druh_vysledek.append(raw_druh_vysledek.lower())
-            else:
-                druh_vysledek.append('Nevyplněno')
-            obsah.append('Vyřízení: ' + " ".join(druh_vysledek))
-            # id_osoby_vyridil = row.find("id_osoby_vyridil").text
-            try:
-                senat_row = row.find("cislo_senatu").text
-                if senat_row and int(senat_row) >= 0:
-                    senat = senat_row
-                    sp_zn_list.append(senat)
+            # Iterate over the XML file
+            datace_raw = list()
+            zprac = row.find("druh_stav_veci").text
+            osoby = list()
+            if "ODSKRTNUTA" == str(zprac):
+                obsah = list()
+                sp_zn_list_raw = list()
+                druh = row.find("druh_vec").text
+                rocnik = row.find("rocnik").text
+                bc_vec = row.find("bc_vec").text
+                sp_zn_list_raw.append(bc_vec)
+                sp_zn_list_raw.append(rocnik)
+                predmet_rizeni = row.find("predmet_rizeni").text
+                obsah.append(predmet_rizeni)
+                druh_vysledek = list()
+                num_senat = ''
+                raw_druh_vysledek = row.find("druh_vysledek").text
+                if raw_druh_vysledek is not None:
+                    druh_vysledek.append(raw_druh_vysledek.lower())
                 else:
+                    druh_vysledek.append('Nevyplněno')
+                obsah.append('Vyřízení: ' + " ".join(druh_vysledek))
+                # id_osoby_vyridil = row.find("id_osoby_vyridil").text
+                try:
+                    senat_row = row.find("cislo_senatu").text
+                    if senat_row and int(senat_row) > 0:
+                        senat = senat_row + ' '
+                        num_senat = senat
+                    else:
+                        pass
+                except AttributeError:
                     pass
-            except AttributeError:
-                pass
-            sp_zn = "/".join(sp_zn_list)
-            datum_doslo = row.find("datum_doslo").text
-            datum_od = datum_doslo[0:4]
-            datum_odskrtnuti = row.find("datum_odskrtnuti").text
-            datum_do = datum_odskrtnuti[0:4]
-            if datum_od == datum_do:
-                datace_raw.append(datum_od)
-            else:
-                datace_raw.append(datum_od + "-" + datum_do)
-            persons = row.findall("data_o_osobe_v_rizeni")
-            for person in persons:
-                osoba = list()
-                role = person.find("druh_role_v_rizeni").text
-                if role is not None:
-                    osoba.append(role)
+                sp_zn_list = "/".join(sp_zn_list_raw)
+                if num_senat == '':
+                    sp_zn = str(num_senat) + sp_zn_list
                 else:
-                    osoba.append('Role osoby nevyplněna')
-                prijmeni = person.find("nazev_osoby").text
-                if prijmeni is not None:
-                    osoba.append(prijmeni)
+                    sp_zn = str(num_senat) + ' ' + sp_zn_list
+                datum_doslo = row.find("datum_doslo").text
+                datum_od = datum_doslo[0:4]
+                datum_odskrtnuti = row.find("datum_odskrtnuti").text
+                datum_do = datum_odskrtnuti[0:4]
+                if datum_od == datum_do:
+                    datace_raw.append(datum_od)
                 else:
-                    pass
-                jmeno = person.find("jmeno").text
-                if jmeno is not None:
-                    osoba.append(jmeno)
-                else:
-                    pass
-                vek = person.find("priznak_mladistvy_dospely").text
-                if vek == "M":
-                    osoba.append("Mladistvý")
-                else:
-                    pass
-                umrti = person.find("datum_umrti").text
-                if umrti is not None:
-                    osoba.append("Datum úmrtí: + " + umrti)
-                else:
-                    pass
-                osoba_full = ", ".join(osoba)
-                osoby.append(osoba_full)
+                    datace_raw.append(datum_od + "-" + datum_do)
+                persons = row.findall("data_o_osobe_v_rizeni")
+                for person in persons:
+                    osoba = list()
+                    role = person.find("druh_role_v_rizeni").text
+                    if role is not None:
+                        osoba.append(role)
+                    else:
+                        osoba.append('Role osoby nevyplněna')
+                    prijmeni = person.find("nazev_osoby").text
+                    if prijmeni is not None:
+                        osoba.append(prijmeni)
+                    else:
+                        pass
+                    jmeno = person.find("jmeno").text
+                    if jmeno is not None:
+                        osoba.append(jmeno)
+                    else:
+                        pass
+                    vek = person.find("priznak_mladistvy_dospely").text
+                    if vek == "M":
+                        osoba.append("Mladistvý")
+                    else:
+                        pass
+                    umrti = person.find("datum_umrti").text
+                    if umrti is not None:
+                        osoba.append("Datum úmrtí: + " + umrti)
+                    else:
+                        pass
+                    osoba_full = ", ".join(osoba)
+                    osoby.append(osoba_full)
         elif "MYLNÝ" in zprac:
             obsah = list()
             druh = row.find("druh_vec").text
@@ -448,32 +461,38 @@ def elza_rejstrik_csv(xmlFile, file_name, output_folder):
             zprac = row.find("druh_stav_veci").text
             osoby = list()
             if "ODSKRTNUTA" == str(zprac):
-                sp_zn_list = list()
+                obsah = list()
+                sp_zn_list_raw = list()
                 druh = row.find("druh_vec").text
                 rocnik = row.find("rocnik").text
                 bc_vec = row.find("bc_vec").text
-                sp_zn_list.append(bc_vec)
-                sp_zn_list.append(rocnik)
-                # sp_zn_roc_list = (bc_vec, rocnik)
-                # sp_zn_roc = "/".join(sp_zn_roc_list)
-                obsah = list()
+                sp_zn_list_raw.append(bc_vec)
+                sp_zn_list_raw.append(rocnik)
                 predmet_rizeni = row.find("predmet_rizeni").text
                 obsah.append(predmet_rizeni)
-                raw_druh_vysledek = row.find("druh_vysledek").text
                 druh_vysledek = list()
+                num_senat = ''
+                raw_druh_vysledek = row.find("druh_vysledek").text
                 if raw_druh_vysledek is not None:
                     druh_vysledek.append(raw_druh_vysledek.lower())
                 else:
                     druh_vysledek.append('Nevyplněno')
                 obsah.append('Vyřízení: ' + " ".join(druh_vysledek))
                 # id_osoby_vyridil = row.find("id_osoby_vyridil").text
-                senat_row = row.find("cislo_senatu").text
-                if senat_row and int(senat_row) >= 0:
-                    senat = senat_row
-                    sp_zn_list.append(senat)
+                try:
+                    senat_row = row.find("cislo_senatu").text
+                    if senat_row and int(senat_row) > 0:
+                        senat = senat_row + ' '
+                        num_senat = senat
+                    else:
+                        pass
+                except AttributeError:
+                    pass
+                sp_zn_list = "/".join(sp_zn_list_raw)
+                if num_senat == '':
+                    sp_zn = str(num_senat) + sp_zn_list
                 else:
-                    sp_zn_list = (druh, sp_zn_roc)
-                sp_zn = "/".join(sp_zn_list)
+                    sp_zn = str(num_senat) + ' ' + sp_zn_list
                 datum_doslo = row.find("datum_doslo").text
                 datum_od = datum_doslo[0:4]
                 datum_odskrtnuti = row.find("datum_odskrtnuti").text
@@ -500,29 +519,15 @@ def elza_rejstrik_csv(xmlFile, file_name, output_folder):
                         osoba.append(jmeno)
                     else:
                         pass
-                    try:
-                        datum_narozeni = person.find("datum_narozeni").text
-                        if datum_narozeni is not None:
-                            osoba.append(datum_narozeni)
-                        else:
-                            pass
-                    except AttributeError:
+                    vek = person.find("priznak_mladistvy_dospely").text
+                    if vek == "M":
+                        osoba.append("Mladistvý")
+                    else:
                         pass
-                    try:
-                        vek = person.find("priznak_mladistvy_dospely").text
-                        if vek == "M":
-                            osoba.append("Mladistvý")
-                        else:
-                            pass
-                    except AttributeError:
-                        pass
-                    try:
-                        umrti = person.find("datum_umrti").text
-                        if umrti is not None:
-                            osoba.append("Datum úmrtí: + " + umrti)
-                        else:
-                            pass
-                    except AttributeError:
+                    umrti = person.find("datum_umrti").text
+                    if umrti is not None:
+                        osoba.append("Datum úmrtí: + " + umrti)
+                    else:
                         pass
                     osoba_full = ", ".join(osoba)
                     osoby.append(osoba_full)
@@ -783,46 +788,64 @@ def file_process():
     print('Národní Archiv\nisyz_soudy_appka spuštěna, vyhledávám XML data pro zpracování\n')
     rejstrik_files = 0
     isyz_files = 0
+    processed = list()
     xml_list = list()
+    duplicates = list()
     for dirpath, dirnames, filenames in os.walk(import_folder):
         for file_name in [f for f in filenames if f. endswith(".xml") or f. endswith(".XML")]:
-            file_content = open(os.path.join(dirpath, file_name), encoding="utf8").read()
-            file_path = os.path.join(dirpath, file_name)
-            for line in file_content.splitlines():
+            if file_name not in processed:
+                file_content = open(os.path.join(dirpath, file_name), encoding="utf8").read()
+                file_path = os.path.join(dirpath, file_name)
+                for line in file_content.splitlines():
+                    #Check for isyz
+                    if (line.find("isyz") or line.find("ZASTUPITELSTVÍ") or line.find("zastupitelství")
+                                or line.find("Zastupitelství")) != -1 :
+                        print('Rozpoznány XML data z ISYZ: ' + file_name)
+                        xml_list.append(file_name)
+                        isyz_files += 1
+                        print('Zpracovávám vstupní data pro ProArch...')
+                        proarch_isyz_csv(file_path, file_name, export_folder)
+                        print('Zpracovávám vstupní data pro Elza...\n')
+                        elza_isyz_csv(file_path, file_name, export_folder)
+                        processed.append(file_name)
+                        break
+                    elif (line.find("soud") or line.find("SOUD") or line.find("Soud")) != -1 :
+                        print('Rozpoznány XML data z rejstříků soudů: ' + file_name)
+                        xml_list.append(file_name)
+                        rejstrik_files += 1
+                        print('Zpracovávám vstupní data rejstříku pro ProArch...')
+                        proarch_rejstrik_csv(file_path, file_name, export_folder)
+                        print('Zpracovávám vstupní rejstříku data pro Elza...\n')
+                        elza_rejstrik_csv(file_path, file_name, export_folder)
+                        processed.append(file_name)
+                        break
+            else:
+                print('Nalezen soubor, který má shodný název s již zpracovaným: ' + file_name + ' vynechávám.\n')
+                duplicates.append(file_name)
 
-                #Check for isyz
-                if (line.find("isyz") or line.find("ZASTUPITELSTVÍ") or line.find("zastupitelství")
-                            or line.find("Zastupitelství")) != -1 :
-                    print('Rozpoznány XML data z ISYZ: ' + file_name)
-                    xml_list.append(file_name)
-                    isyz_files += 1
-                    print('Zpracovávám vstupní data pro ProArch...')
-                    proarch_isyz_csv(file_path, file_name, export_folder)
-                    print('Zpracovávám vstupní data pro Elza...\n')
-                    elza_isyz_csv(file_path, file_name, export_folder)
-                    break
-                elif (line.find("soud") or line.find("SOUD") or line.find("Soud")) != -1 :
-                    print('Rozpoznány XML data z rejstříků soudů: ' + file_name)
-                    xml_list.append(file_name)
-                    rejstrik_files += 1
-                    print('Zpracovávám vstupní data rejstříku pro ProArch...')
-                    proarch_rejstrik_csv(file_path, file_name, export_folder)
-                    print('Zpracovávám vstupní rejstříku data pro Elza...\n')
-                    elza_rejstrik_csv(file_path, file_name, export_folder)
-                    break
     with open("isyz_soudy_appka_zprava.html",
               "w",
             newline="\n",
             encoding="UTF-8") as report:
-        report.write("<html><body><h1>Národní archiv, isyz_soudy_appka</h1><br><p>Zpracováno:<p><br>")
+        report.write("<html><body><h1>Národní archiv, isyz_soudy_appka</h1><br><h3>Zpracováno:</h3><br>")
         report.close()
     with open("isyz_soudy_appka_zprava.html",
               "a",
             newline="\n",
             encoding="UTF-8") as report:
-        for i in xml_list:
-            report.write(i+'<br>')
+        report.write(", ".join(processed) + '<br>')
         report.close()
+    if len(duplicates) != 0:
+        with open("isyz_soudy_appka_zprava.html",
+                  "a",
+                newline="\n",
+                encoding="UTF-8") as report:
+            report.write('</p><h3>Nezpracované soubory z důvodu stejného názvu: </h3><br>' + ", ".join(duplicates) +
+                         '<br><h3>Pokud se nejedná o chybu, soubor přejmenujte a zpracujte data ještě jednou.</h3><br>'
+                         + '<p>Appka byla vyvinuta ve spolupráci NA a SOA v HK v roce 2025.</p>')
+            report.close()
+    else:
+        pass
     with open("isyz_soudy_appka_zprava.html",
               "a",
               newline="\n",
@@ -830,7 +853,8 @@ def file_process():
         report.write('</p></body></html>')
         report.close()
     print('\nZpracováno celkem ' + str(rejstrik_files) + ' XML z rejstříků, ' + str(isyz_files) +
-          ' XML z ISYZu. Report o průběhu je vytvořen, ukončuji zpracování')
+          ' XML z ISYZu. Nezpracováno ' + str(len(duplicates)) + ' XML. Report o průběhu je vytvořen, '
+                                                                 'ukončuji zpracování')
 
 
 if __name__ == "__main__":
